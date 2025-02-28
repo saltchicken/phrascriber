@@ -2,6 +2,8 @@ import asyncio
 import pyaudio
 import numpy as np
 from faster_whisper import WhisperModel
+from jenova.utils.dataclass import Message
+import json
 
 # Audio settings
 FORMAT = pyaudio.paInt16
@@ -88,12 +90,30 @@ async def handle_transcription():
     try:
         while True:
             phrase = await phrase_queue.get()
-            print(f"Handling phrase: {phrase}")
+            # print(f"Handling phrase: {phrase}")
+            await send_agent_message("question", phrase)
+            phrase_queue.task_done()
     except asyncio.CancelledError:
         print("Handling task cancelled.")
 
+async def send_agent_message(type, payload):
+    reader, writer = await asyncio.open_connection('127.0.0.1', 8889)
 
-async def main():
+    message = Message(type=type, payload=payload)
+
+    print(f"Sending: {message}")
+    writer.write(message.to_json().encode())
+    await writer.drain()
+
+    data = await reader.read(1024)
+    response = json.loads(data.decode())
+    print(f"Received: {response}")
+
+    writer.close()
+    await writer.wait_closed()
+
+
+async def async_main():
     """ Main async function to run both tasks concurrently. """
     try:
         await asyncio.gather(
@@ -104,6 +124,8 @@ async def main():
     except asyncio.CancelledError:
         print("Main task cancelled.")
 
-if __name__ == "__main__":
-    asyncio.run(main())
+def main():
+    asyncio.run(async_main())
 
+if __name__ == "__main__":
+    main()
