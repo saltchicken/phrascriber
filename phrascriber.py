@@ -95,11 +95,11 @@ async def handle_transcription():
 
 async def main():
     """ Main async function to run both tasks concurrently. """
-    handle_transcription_task = asyncio.create_task(handle_transcription())
     try:
         await asyncio.gather(
             listen_to_microphone(),
-            transcribe_audio()
+            transcribe_audio(),
+            handle_transcription(),
         )
     except asyncio.CancelledError:
         print("Main task cancelled.")
