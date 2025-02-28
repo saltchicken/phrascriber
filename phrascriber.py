@@ -50,7 +50,7 @@ async def listen_to_microphone():
                 if silent_chunks > int(SILENCE_DURATION * RATE / CHUNK):
                     print("Silence detected. Stopping recording.")
                     if frames:
-                        if len(frames) <= 5:
+                        if len(frames) <= 7:
                             print("Audio too short. Discarding.")
                         else:
                             await audio_queue.put(frames)  # Send audio data to processing task
@@ -104,6 +104,6 @@ async def main():
     except asyncio.CancelledError:
         print("Main task cancelled.")
 
-# Run the event loop
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
 
