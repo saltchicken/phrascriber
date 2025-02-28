@@ -25,71 +25,84 @@ phrase_queue = asyncio.Queue()
 
 async def listen_to_microphone():
     """ Continuously listens to the microphone and pushes audio chunks into the queue. """
-    p = pyaudio.PyAudio()
-    stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+    try:
+        p = pyaudio.PyAudio()
+        stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
 
-    print("Listening for speech...")
+        print("Listening for speech...")
 
-    frames = []
-    silent_chunks = 0
-    recording = False
+        frames = []
+        silent_chunks = 0
+        recording = False
 
-    while True:
-        data = stream.read(CHUNK, exception_on_overflow=False)
-        audio_np = np.frombuffer(data, dtype=np.int16)
+        while True:
+            data = stream.read(CHUNK, exception_on_overflow=False)
+            audio_np = np.frombuffer(data, dtype=np.int16)
 
-        if np.max(np.abs(audio_np)) > SILENCE_THRESHOLD:
-            if not recording:
-                print("Speech detected. Recording...")
-                recording = True
-            frames.append(audio_np)
-            silent_chunks = 0  # Reset silence counter
-        elif recording:
-            silent_chunks += 1
-            if silent_chunks > int(SILENCE_DURATION * RATE / CHUNK):
-                print("Silence detected. Stopping recording.")
-                if frames:
-                    if len(frames) <= 5:
-                        print("Audio too short. Discarding.")
-                    else:
-                        await audio_queue.put(frames)  # Send audio data to processing task
-                frames = []  # Reset frames buffer
-                recording = False
+            if np.max(np.abs(audio_np)) > SILENCE_THRESHOLD:
+                if not recording:
+                    print("Speech detected. Recording...")
+                    recording = True
+                frames.append(audio_np)
+                silent_chunks = 0  # Reset silence counter
+            elif recording:
+                silent_chunks += 1
+                if silent_chunks > int(SILENCE_DURATION * RATE / CHUNK):
+                    print("Silence detected. Stopping recording.")
+                    if frames:
+                        if len(frames) <= 5:
+                            print("Audio too short. Discarding.")
+                        else:
+                            await audio_queue.put(frames)  # Send audio data to processing task
+                    frames = []  # Reset frames buffer
+                    recording = False
 
-        await asyncio.sleep(0)  # Yield control to avoid blocking
-
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
+            await asyncio.sleep(0)  # Yield control to avoid blocking
+    except asyncio.CancelledError:
+        print("Listening task cancelled.")
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
+        print("Pyaudio stream cleaned")
 
 
 async def transcribe_audio():
     """ Processes audio chunks from the queue and transcribes them. """
-    while True:
-        frames = await audio_queue.get()  # Wait for audio data from the queue
-        audio_data = np.concatenate(frames, axis=0).astype(np.float32) / 32768.0  # Normalize
+    try:
+        while True:
+            frames = await audio_queue.get()  # Wait for audio data from the queue
+            audio_data = np.concatenate(frames, axis=0).astype(np.float32) / 32768.0  # Normalize
 
-        # Transcribe using Whisper
-        segments, _ = audio_model.transcribe(audio_data, language="en")
-        text = "".join(segment.text for segment in segments)
-        phrase_queue.put_nowait(text)
+            # Transcribe using Whisper
+            segments, _ = audio_model.transcribe(audio_data, language="en")
+            text = "".join(segment.text for segment in segments)
+            phrase_queue.put_nowait(text)
 
-        audio_queue.task_done()  # Mark task as done
+            audio_queue.task_done()  # Mark task as done
+    except asyncio.CancelledError:
+        print("Transcription task cancelled.")
+
 
 async def handle_transcription():
     """ Placeholder function to handle the transcription. """
-    while True:
-        phrase = await phrase_queue.get()
-        print(f"Handling phrase: {phrase}")
+    try:
+        while True:
+            phrase = await phrase_queue.get()
+            print(f"Handling phrase: {phrase}")
+    except asyncio.CancelledError:
+        print("Handling task cancelled.")
 
 
 async def main():
     """ Main async function to run both tasks concurrently. """
     handle_transcription_task = asyncio.create_task(handle_transcription())
-    await asyncio.gather(
-        listen_to_microphone(),
-        transcribe_audio()
-    )
+    try:
+        await asyncio.gather(
+            listen_to_microphone(),
+            transcribe_audio()
+        )
+    except asyncio.CancelledError:
+        print("Main task cancelled.")
 
 # Run the event loop
 asyncio.run(main())
