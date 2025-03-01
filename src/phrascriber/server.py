@@ -24,12 +24,13 @@ phrase_queue = asyncio.Queue()
 HOST = "0.0.0.0"
 PORT = 6969
 
+clients = set()  # Store client writer objects
 
 async def handle_client(reader, writer):
     """Handles an incoming client connection and processes audio data."""
     print("Client connected.")
+    clients.add(writer)  # Track the client
     frames = []
-    receiving_audio = False
 
     try:
         while True:
@@ -49,6 +50,7 @@ async def handle_client(reader, writer):
         print("Client handling task cancelled.")
     finally:
         print("Client disconnected.")
+        clients.remove(writer)  # Remove from the list
         writer.close()
         await writer.wait_closed()
 
@@ -68,16 +70,20 @@ async def transcribe_audio():
     except asyncio.CancelledError:
         print("Transcription task cancelled.")
 
-
 async def handle_transcription():
-    """ Placeholder function to handle the transcription. """
+    """ Sends the transcription results back to the client. """
     try:
         while True:
             phrase = await phrase_queue.get()
-            print(f"Handling phrase: {phrase}")
+            print(f"Transcribed: {phrase}")
+            for writer in clients:
+                try:
+                    writer.write(phrase.encode() + b"\n")  # Send transcription
+                    await writer.drain()
+                except Exception as e:
+                    print(f"Error sending transcription: {e}")
     except asyncio.CancelledError:
         print("Handling task cancelled.")
-
 
 async def async_main():
     """ Main async function to run both tasks concurrently. """
@@ -98,3 +104,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
