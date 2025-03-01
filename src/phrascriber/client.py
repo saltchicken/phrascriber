@@ -3,7 +3,7 @@ import pyaudio
 import numpy as np
 
 # Server details
-SERVER_IP = "127.0.0.1"  # Change to server's IP if running remotely
+SERVER_IP = "10.0.0.2"  # Change to server's IP if running remotely
 SERVER_PORT = 6969
 
 # Audio settings
@@ -45,7 +45,7 @@ async def send_audio(writer):
                             writer.write(frame)
                             await writer.drain()
 
-                        writer.write(b"END")  # Send end marker
+                        writer.write(b"END ")  # Send end marker
                         await writer.drain()
                     else:
                         print("Audio too short. Discarding.")
