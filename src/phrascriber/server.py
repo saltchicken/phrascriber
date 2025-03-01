@@ -38,7 +38,7 @@ async def handle_client(reader, writer):
             if not data:
                 break
 
-            if data == b"END":
+            if data.endswith(b"END "):  # Check if the data ends with b"END ":
                 if frames:
                     await audio_queue.put(frames)
                     frames = []
