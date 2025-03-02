@@ -86,11 +86,14 @@ class Client():
 
         await asyncio.gather(self.send_audio(writer), self.receive_transcriptions(reader))
 
+    def run(self):
+        try:
+            asyncio.run(self.main())
+        except KeyboardInterrupt:
+            print("Client shutting down.")
+
 if __name__ == "__main__":
     receive_func = lambda x: print(f"Received: {x}")
     client = Client("10.0.0.2", "6969", receive_func)
-    try:
-        asyncio.run(client.main())
-    except KeyboardInterrupt:
-        print("Client shutting down.")
+    client.run()
 
