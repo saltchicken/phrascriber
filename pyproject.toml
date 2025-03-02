@@ -9,8 +9,8 @@ dependencies = [
 ]
 
 [project.scripts]
-phrascriber_jenova = "phrascriber.phrase_to_jenova:main"
-phrascriber = "phrascriber.phrascriber:main"
+# phrascriber_jenova = "phrascriber.phrase_to_jenova:main"
+phrascriber = "phrascriber.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
