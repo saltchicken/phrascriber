@@ -74,7 +74,8 @@ class Client():
                 data = await reader.readline()
                 if not data:
                     break
-                print(f"Transcription: {data.decode().strip()}")
+                transcription = data.decode().strip()
+                self.receive_func(transcription)
         except asyncio.CancelledError:
             print("Receiving task cancelled.")
 
@@ -86,7 +87,8 @@ class Client():
         await asyncio.gather(self.send_audio(writer), self.receive_transcriptions(reader))
 
 if __name__ == "__main__":
-    client = Client("10.0.0.2", "6969")
+    receive_func = lambda x: print(f"Received: {x}")
+    client = Client("10.0.0.2", "6969", receive_func)
     try:
         asyncio.run(client.main())
     except KeyboardInterrupt:
