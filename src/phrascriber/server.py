@@ -11,7 +11,8 @@ RATE = 16000
 CHUNK = 1024
 
 # Whisper model settings
-model = "medium"
+model = "large-v3"
+# model = "medium"
 device = "cuda"
 compute_type = "auto"
 cpu_threads = 0
