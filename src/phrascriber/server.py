@@ -3,6 +3,7 @@ import pyaudio
 import numpy as np
 import socket
 from faster_whisper import WhisperModel
+import argparse
 
 # Audio settings
 FORMAT = pyaudio.paInt16
@@ -21,9 +22,6 @@ audio_model = WhisperModel(model, device=device, compute_type=compute_type, cpu_
 # Async queue for transferring audio chunks
 audio_queue = asyncio.Queue()
 phrase_queue = asyncio.Queue()
-
-HOST = "0.0.0.0"
-PORT = 6969
 
 clients = set()  # Store client writer objects
 
@@ -86,10 +84,10 @@ async def handle_transcription():
     except asyncio.CancelledError:
         print("Handling task cancelled.")
 
-async def async_main():
+async def async_main(args):
     """ Main async function to run both tasks concurrently. """
-    server = await asyncio.start_server(handle_client, HOST, PORT)
-    print(f"Server started on {HOST}:{PORT}")
+    server = await asyncio.start_server(handle_client, args.host, args.port)
+    print(f"Server started on {args.host}:{args.port}")
     try:
         await asyncio.gather(
             server.serve_forever(),
@@ -100,8 +98,12 @@ async def async_main():
         print("Main task cancelled.")
 
 def main():
+    parser = argparse.ArgumentParser(description='Transcribe audio from a socket.')
+    parser.add_argument('--host', type=str, default='0.0.0.0', help='Host address to bind to.')
+    parser.add_argument('--port', type=int, default=6969, help='Port to bind to.')
+    args = parser.parse_args()
     """ Main function to run the async main function. """
-    asyncio.run(async_main())
+    asyncio.run(async_main(args))
 
 if __name__ == "__main__":
     main()
